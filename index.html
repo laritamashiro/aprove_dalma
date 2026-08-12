@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aprove D'Alma — Gestão & Aprovação de Conteúdo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col">
+
+  <!-- SVG REUTILIZÁVEL DA LOGO D'ALMA -->
+  <svg class="hidden">
+    <symbol id="dalma-logo-svg" viewBox="0 0 400 400">
+      <circle cx="200" cy="200" r="190" fill="#0f172a"/>
+      <path d="M 200 40 A 160 160 0 0 1 360 200 A 160 160 0 0 1 290 338" fill="none" stroke="#2B5B6C" stroke-width="28" stroke-linecap="round"/>
+      <path d="M 110 62 A 160 160 0 0 1 200 40" fill="none" stroke="#E8D8C0" stroke-width="28" stroke-linecap="round"/>
+      <path d="M 200 360 A 160 160 0 0 1 40 200 A 160 160 0 0 1 110 62" fill="none" stroke="#E8D8C0" stroke-width="28" stroke-linecap="round"/>
+      <path d="M 290 338 A 160 160 0 0 1 200 360" fill="none" stroke="#2B5B6C" stroke-width="28" stroke-linecap="round"/>
+      <path d="M 200 100 A 100 100 0 0 1 300 200 A 100 100 0 0 1 240 286" fill="none" stroke="#E8D8C0" stroke-width="22" stroke-linecap="round"/>
+      <path d="M 160 114 A 100 100 0 0 1 200 100" fill="none" stroke="#2B5B6C" stroke-width="22" stroke-linecap="round"/>
+      <path d="M 200 300 A 100 100 0 0 1 100 200 A 100 100 0 0 1 160 114" fill="none" stroke="#2B5B6C" stroke-width="22" stroke-linecap="round"/>
+      <path d="M 240 286 A 100 100 0 0 1 200 300" fill="none" stroke="#E8D8C0" stroke-width="22" stroke-linecap="round"/>
+    </symbol>
+  </svg>
+
+  <!-- TOPBAR -->
+  <header id="topbar" class="hidden bg-slate-900 border-b border-slate-800 px-6 py-3 flex justify-between items-center sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl overflow-hidden border border-slate-700 shadow-md">
+        <svg class="w-full h-full"><use href="#dalma-logo-svg"/></svg>
+      </div>
+      <div>
+        <h1 class="font-bold text-base leading-none text-white tracking-wide">Aprove D'Alma</h1>
+        <p id="topbar-user-info" class="text-[11px] text-slate-400 mt-1">D'Alma Assessoria de Marketing e Comunicação</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button id="btn-mirror-exit" onclick="showAdminDashboard()" class="hidden bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+        <i data-lucide="eye-off" class="w-3.5 h-3.5"></i> Sair da Visão Espelho
+      </button>
+
+      <button onclick="logout()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5">
+        <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Sair
+      </button>
+    </div>
+  </header>
+
+  <!-- 1. TELA DE LOGIN REAL -->
+  <div id="view-login" class="flex-1 flex items-center justify-center p-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 rounded-2xl overflow-hidden border border-slate-700 mx-auto mb-3 shadow-lg shadow-cyan-950/50">
+          <svg class="w-full h-full"><use href="#dalma-logo-svg"/></svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white">Aprove D'Alma</h2>
+        <p class="text-xs text-slate-400 mt-1">Insira seu e-mail e senha para acessar</p>
+      </div>
+
+      <form onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 mb-1.5">E-mail</label>
+          <input type="email" id="login-email" required class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="seu@email.com">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 mb-1.5">Senha</label>
+          <input type="password" id="login-password" required class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="••••••••">
+        </div>
+        <button type="submit" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-bold py-3.5 rounded-2xl text-xs transition shadow-lg shadow-cyan-950/50">
+          Entrar na Plataforma
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. PAINEL DO ADMINISTRADOR -->
+  <main id="view-admin" class="hidden flex-1 p-6 max-w-[1600px] mx-auto w-full space-y-8">
+    <section class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
+      <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="font-bold text-xl text-white flex items-center gap-2">
+            <i data-lucide="folder-search" class="w-5 h-5 text-cyan-400"></i> Gestão de Materiais e Clientes
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Filtre as postagens por cliente e intervalo de datas Lalá.</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="openNewClientModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md">
+            <i data-lucide="user-plus" class="w-4 h-4"></i> Cadastrar Novo Cliente
+          </button>
+          <button onclick="scrollToCreator()" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md">
+            <i data-lucide="plus" class="w-4 h-4"></i> Criar Novo Post
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTROS -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800 items-end">
+        <div class="md:col-span-4">
+          <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1.5">Filtrar por Cliente</label>
+          <select id="filter-client" onchange="applyFilters()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200">
+            <option value="ALL">Todos os Clientes</option>
+          </select>
+        </div>
+        <div class="md:col-span-3">
+          <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1.5">De</label>
+          <input type="date" id="filter-date-from" onchange="applyFilters()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200">
+        </div>
+        <div class="md:col-span-3">
+          <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1.5">Até</label>
+          <input type="date" id="filter-date-to" onchange="applyFilters()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200">
+        </div>
+        <div class="md:col-span-2">
+          <button onclick="resetFilters()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-xs border border-slate-700">Limpar</button>
+        </div>
+      </div>
+
+      <!-- TABELA DE MATERIAIS -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider font-bold rounded-xl">
+            <tr>
+              <th class="p-3.5">Cliente</th>
+              <th class="p-3.5">ID / Link</th>
+              <th class="p-3.5">Formato</th>
+              <th class="p-3.5">Data e Hora de Publicação</th>
+              <th class="p-3.5">Status</th>
+              <th class="p-3.5 text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="links-table-body" class="divide-y divide-slate-800/60"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FORMULÁRIO DE CRIAÇÃO DE POST -->
+    <section id="creator-section" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 flex flex-col gap-6 shadow-xl">
+        <div class="border-b border-slate-800 pb-4">
+          <h3 class="font-bold text-lg text-white flex items-center gap-2">
+            <i data-lucide="plus-circle" class="w-5 h-5 text-cyan-400"></i> Criar Conteúdo & Gerar Link
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">Selecione o cliente destinatário para associar a publicação.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 mb-2">Cliente Destinatário</label>
+          <select id="select-client" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"></select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 mb-2">Formato do Post</label>
+          <div class="grid grid-cols-4 gap-2">
+            <button type="button" onclick="setFormat('static')" id="btn-fmt-static" class="format-btn border border-cyan-500 bg-cyan-500/10 text-cyan-300 p-3 rounded-2xl font-semibold text-xs">Estático</button>
+            <button type="button" onclick="setFormat('carousel')" id="btn-fmt-carousel" class="format-btn border border-slate-800 bg-slate-950 text-slate-400 p-3 rounded-2xl font-semibold text-xs">Carrossel</button>
+            <button type="button" onclick="setFormat('reels')" id="btn-fmt-reels" class="format-btn border border-slate-800 bg-slate-950 text-slate-400 p-3 rounded-2xl font-semibold text-xs">Reels</button>
+            <button type="button" onclick="setFormat('story')" id="btn-fmt-story" class="format-btn border border-slate-800 bg-slate-950 text-slate-400 p-3 rounded-2xl font-semibold text-xs">Story</button>
+          </div>
+        </div>
+
+        <!-- UPLOAD CUMULATIVO LOCAL -->
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <label class="block text-xs font-bold uppercase text-slate-400">Mídias</label>
+            <button type="button" onclick="clearAllMedia()" class="text-[11px] text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-full font-medium">Limpar Mídias</button>
+          </div>
+          
+          <div onclick="document.getElementById('file-input').click()" class="border-2 border-dashed border-slate-700 hover:border-cyan-500 bg-slate-950 rounded-2xl p-5 text-center cursor-pointer transition">
+            <input type="file" id="file-input" multiple accept="image/*,video/*" class="hidden" onchange="handleFileSelect(event)">
+            <i data-lucide="upload-cloud" class="w-6 h-6 mx-auto mb-1 text-slate-400"></i>
+            <p class="text-xs text-slate-300 font-semibold">Clique para adicionar mídias do dispositivo</p>
+          </div>
+
+          <div class="mt-4">
+            <div id="media-thumbnails" class="flex gap-3 overflow-x-auto pb-2"></div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 mb-2">Legenda Oficial</label>
+          <textarea id="input-caption" oninput="updatePreview()" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-slate-100 focus:outline-none focus:border-cyan-500" placeholder="Digite a legenda..."></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-400 mb-2">Data de Publicação</label>
+            <input type="date" id="input-date" onchange="updatePreview()" onclick="this.showPicker()" value="2026-08-15" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2.5 text-xs text-slate-200">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-400 mb-2">Horário (00:00 às 23:59)</label>
+            <input type="time" id="input-time" min="00:00" max="23:59" onchange="updatePreview()" onclick="this.showPicker()" value="18:00" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2.5 text-xs text-slate-200">
+          </div>
+        </div>
+
+        <button onclick="createNewPostLink()" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-bold py-3.5 rounded-2xl text-xs transition shadow-lg shadow-cyan-950/50 flex items-center justify-center gap-2">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i> Salvar e Gerar Link Aprove D'Alma
+        </button>
+      </div>
+
+      <div class="lg:col-span-5 flex justify-center items-start sticky top-20">
+        <div id="phone-container-admin"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: CADASTRAR NOVO CLIENTE -->
+  <div id="modal-new-client" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl">
+      <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-base text-white flex items-center gap-2">
+          <i data-lucide="user-plus" class="w-4 h-4 text-emerald-400"></i> Cadastrar Novo Cliente
+        </h3>
+        <button onclick="closeNewClientModal()" class="text-slate-400 hover:text-white text-sm font-bold">✕</button>
+      </div>
+
+      <form onsubmit="handleRegisterClient(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Nome do Cliente / Marca</label>
+          <input type="text" id="new-client-name" required placeholder="Ex: Strauss ou Lalá" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-slate-200">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 mb-1">E-mail de Acesso do Cliente</label>
+          <input type="email" id="new-client-email" required placeholder="cliente@email.com" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-slate-200">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeNewClientModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-2xl text-xs">Cancelar</button>
+          <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-2xl text-xs shadow-lg">Cadastrar Cliente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. VISUALIZAÇÃO DO CLIENTE -->
+  <main id="view-client" class="hidden flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 max-w-[1600px] mx-auto w-full">
+    <div id="client-view-banner" class="lg:col-span-12 bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 rounded-2xl px-5 py-3.5 text-xs flex items-center justify-between shadow-sm">
+      <div class="flex items-center gap-3">
+        <i data-lucide="shield-check" class="w-5 h-5 text-cyan-400"></i>
+        <span id="banner-text-mode">Plataforma Aprove D'Alma — Área de Validação do Cliente.</span>
+      </div>
+      <span id="banner-tag-mode" class="bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full text-[10px] font-bold uppercase">Aprove D'Alma</span>
+    </div>
+
+    <section class="lg:col-span-6 flex justify-center items-center bg-slate-900/60 border border-slate-800 rounded-3xl p-8">
+      <div id="phone-container-client"></div>
+    </section>
+
+    <section class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 flex flex-col justify-between gap-6 shadow-xl">
+      <div>
+        <div class="flex justify-between items-start mb-6 border-b border-slate-800 pb-4">
+          <div>
+            <h2 class="font-bold text-2xl text-white">Aprovação de Conteúdo</h2>
+            <p id="client-post-id-tag" class="text-xs text-slate-400 mt-1">Link de Validação</p>
+          </div>
+          <div id="status-badge" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold px-3.5 py-1.5 rounded-full">
+            Aguardando Aprovação
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <button onclick="setStatus('approved')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-2xl text-xs transition flex items-center justify-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> Aprovar Conteúdo
+          </button>
+          <button onclick="setStatus('revision')" class="bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold py-3.5 px-4 rounded-2xl text-xs transition flex items-center justify-center gap-2">
+            <i data-lucide="message-square-plus" class="w-4 h-4"></i> Solicitar Ajustes
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 border-t border-b border-slate-800 py-6 flex flex-col justify-between gap-4">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+          <i data-lucide="messages-square" class="w-4 h-4 text-cyan-400"></i> Histórico de Comentários
+        </h3>
+
+        <div id="comments-list" class="space-y-3 overflow-y-auto max-h-56 pr-2"></div>
+
+        <div class="flex gap-2 pt-2">
+          <input type="text" id="input-comment" placeholder="Escreva seu comentário..." class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+          <button onclick="addComment()" class="bg-cyan-700 hover:bg-cyan-600 text-white px-5 rounded-2xl text-xs font-bold transition">Enviar</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MOCKUP BASE REUTILIZÁVEL -->
+  <template id="phone-template">
+    <div class="w-full max-w-[360px] bg-black border-[10px] border-slate-800 rounded-[48px] shadow-2xl overflow-hidden relative border-slate-800">
+      <div class="p-3 bg-black flex items-center justify-between border-b border-slate-900">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-full overflow-hidden border border-slate-700 p-[1px] bg-slate-900">
+            <svg class="w-full h-full"><use href="#dalma-logo-svg"/></svg>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-white leading-none">d.alma.mkt</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">Áudio Original</p>
+          </div>
+        </div>
+        <i data-lucide="more-horizontal" class="w-4 h-4 text-white"></i>
+      </div>
+
+      <div id="media-wrapper" class="relative w-full bg-slate-950 flex items-center justify-center overflow-hidden aspect-portrait group">
+        <div id="media-display-container" class="w-full h-full flex items-center justify-center bg-black">
+          <p class="text-xs text-slate-500 text-center px-4">Nenhuma mídia carregada.</p>
+        </div>
+
+        <button id="btn-prev-slide" onclick="prevSlide(event)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/90 text-white p-1.5 rounded-full backdrop-blur-md transition border border-white/10 z-20">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        </button>
+        <button id="btn-next-slide" onclick="nextSlide(event)" class="hidden absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/90 text-white p-1.5 rounded-full backdrop-blur-md transition border border-white/10 z-20">
+          <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        </button>
+        <div id="carousel-badge" class="hidden absolute top-3 right-3 bg-black/75 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md border border-white/10 z-20">
+          <span id="carousel-index">1</span>/<span id="carousel-total">1</span>
+        </div>
+      </div>
+
+      <div class="p-3 bg-black flex justify-between items-center text-white">
+        <div class="flex items-center gap-3">
+          <i data-lucide="heart" class="w-5 h-5"></i>
+          <i data-lucide="message-circle" class="w-5 h-5"></i>
+          <i data-lucide="send" class="w-5 h-5"></i>
+        </div>
+        <i data-lucide="bookmark" class="w-5 h-5"></i>
+      </div>
+
+      <div class="px-3 pb-4 bg-black text-xs text-slate-200">
+        <p class="font-bold text-white mb-1">Curtido por criadores</p>
+        <p><span class="font-bold text-white mr-1.5">d.alma.mkt</span><span id="preview-caption-text" class="text-slate-300">...</span></p>
+        <p id="preview-schedule-tag" class="text-[10px] text-cyan-400 mt-2 font-medium">Programado para: 15/08/2026 às 18:00</p>
+      </div>
+    </div>
+  </template>
+
+  <!-- SCRIPTS JS DA APLICAÇÃO -->
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/client.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

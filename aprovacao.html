@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aprovação de criativo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --paper:#EDEEEA;
+    --surface:#FFFFFF;
+    --ink:#1F2421;
+    --ink-soft:#5B6560;
+    --border:#D9D5C9;
+    --forest:#3D5A50;
+    --forest-dark:#2C4139;
+    --rust:#A8452E;
+    --amber:#B08325;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',sans-serif;
+    line-height:1.5;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:40px 16px;
+  }
+  .wrap{
+    width:100%;
+    max-width:520px;
+  }
+  .eyebrow{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    font-size:26px;
+    margin:0 0 24px;
+    letter-spacing:-0.01em;
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .midia{
+    width:100%;
+    display:block;
+    background:#000;
+    max-height:640px;
+    object-fit:contain;
+  }
+  .conteudo{padding:20px 22px 22px;}
+  .legenda{
+    font-size:14px;
+    color:var(--ink-soft);
+    white-space:pre-wrap;
+    border-left:2px solid var(--border);
+    padding-left:12px;
+    margin:0 0 20px;
+  }
+  .actions{
+    display:flex;
+    gap:10px;
+  }
+  .btn{
+    flex:1;
+    padding:12px;
+    border-radius:7px;
+    border:none;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14.5px;
+    font-weight:500;
+    cursor:pointer;
+  }
+  .btn-aprovar{background:var(--forest); color:#fff;}
+  .btn-ajuste{background:#fff; color:var(--rust); border:1px solid var(--rust);}
+  .btn:hover{opacity:.9;}
+  #ajuste-box{
+    display:none;
+    margin-top:16px;
+  }
+  #ajuste-box textarea{
+    width:100%;
+    min-height:80px;
+    padding:10px 12px;
+    border:1px solid var(--border);
+    border-radius:7px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14px;
+    resize:vertical;
+  }
+  #ajuste-box button{
+    margin-top:10px;
+    width:100%;
+  }
+  .resultado{
+    text-align:center;
+    padding:48px 24px;
+  }
+  .resultado .icone{
+    font-size:38px;
+    margin-bottom:12px;
+  }
+  .resultado h2{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    font-size:21px;
+    margin:0 0 6px;
+  }
+  .resultado p{
+    color:var(--ink-soft);
+    font-size:14px;
+    margin:0;
+  }
+  .loading, .erro{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="conteudo" class="loading">Carregando criativo...</div>
+</div>
+
+<script src="config.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const id = params.get('id');
+const conteudo = document.getElementById('conteudo');
+
+async function carregar(){
+  if (!id) {
+    conteudo.className = 'erro';
+    conteudo.textContent = 'Link inválido.';
+    return;
+  }
+
+  const { data: item, error } = await supabaseClient
+    .from('creativos')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !item) {
+    conteudo.className = 'erro';
+    conteudo.textContent = 'Não encontramos esse criativo. Confira o link com quem enviou.';
+    return;
+  }
+
+  if (item.status !== 'pendente') {
+    conteudo.className = '';
+    conteudo.innerHTML = `
+      <div class="card">
+        <div class="resultado">
+          <div class="icone">${item.status === 'aprovado' ? '✅' : '✏️'}</div>
+          <h2>${item.status === 'aprovado' ? 'Você já aprovou este criativo' : 'Você já pediu um ajuste'}</h2>
+          <p>${item.status === 'aprovado' ? 'Obrigado! Já está registrado.' : ('Comentário enviado: "' + (item.comentario_cliente || '') + '"')}</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const midia = item.arquivo_tipo === 'video'
+    ? `<video class="midia" src="${item.arquivo_url}" controls></video>`
+    : `<img class="midia" src="${item.arquivo_url}" alt="${item.post_nome}">`;
+
+  conteudo.className = '';
+  conteudo.innerHTML = `
+    <div class="eyebrow">${item.cliente_nome} · ${item.post_nome}</div>
+    <h1>Dá uma olhada nesse post</h1>
+    <div class="card">
+      ${midia}
+      <div class="conteudo">
+        ${item.legenda ? `<p class="legenda">${item.legenda}</p>` : ''}
+        <div class="actions">
+          <button class="btn btn-aprovar" id="btn-aprovar">Aprovar</button>
+          <button class="btn btn-ajuste" id="btn-ajuste">Pedir ajuste</button>
+        </div>
+        <div id="ajuste-box">
+          <textarea id="comentario" placeholder="O que você gostaria de mudar?"></textarea>
+          <button class="btn btn-ajuste" id="btn-enviar-ajuste">Enviar pedido de ajuste</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-aprovar').addEventListener('click', () => responder('aprovado'));
+  document.getElementById('btn-ajuste').addEventListener('click', () => {
+    document.getElementById('ajuste-box').style.display = 'block';
+  });
+  document.getElementById('btn-enviar-ajuste').addEventListener('click', () => {
+    const comentario = document.getElementById('comentario').value.trim();
+    if (!comentario) { alert('Escreva o que você quer ajustar.'); return; }
+    responder('ajuste', comentario);
+  });
+}
+
+async function responder(status, comentario){
+  const { error } = await supabaseClient
+    .from('creativos')
+    .update({
+      status,
+      comentario_cliente: comentario || null,
+      respondido_em: new Date().toISOString()
+    })
+    .eq('id', id);
+
+  if (error) {
+    alert('Não conseguimos registrar sua resposta. Tente de novo em instantes.');
+    return;
+  }
+  carregar();
+}
+
+carregar();
+</script>
+</body>
+</html>

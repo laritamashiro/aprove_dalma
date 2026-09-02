@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Aprovação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --paper:#EDEEEA;
+    --surface:#FAFAF7;
+    --ink:#1F2421;
+    --ink-soft:#5B6560;
+    --border:#D9D5C9;
+    --forest:#3D5A50;
+    --forest-dark:#2C4139;
+    --rust:#A8452E;
+    --amber:#B08325;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',sans-serif;
+    line-height:1.5;
+  }
+  header{
+    padding:32px 24px 20px;
+    max-width:1000px;
+    margin:0 auto;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    font-size:28px;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  header p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:14px;
+  }
+  main{
+    max-width:1000px;
+    margin:0 auto;
+    padding:0 24px 64px;
+    display:grid;
+    grid-template-columns:340px 1fr;
+    gap:24px;
+  }
+  @media(max-width:760px){
+    main{grid-template-columns:1fr;}
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:22px;
+  }
+  .card h2{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    font-size:17px;
+    margin:0 0 16px;
+  }
+  label{
+    display:block;
+    font-size:12.5px;
+    font-weight:500;
+    color:var(--ink-soft);
+    margin:14px 0 5px;
+  }
+  label:first-of-type{margin-top:0;}
+  input[type=text], input[type=date], textarea{
+    width:100%;
+    padding:9px 11px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14px;
+    background:#fff;
+    color:var(--ink);
+  }
+  textarea{resize:vertical; min-height:60px;}
+  input[type=file]{
+    width:100%;
+    font-size:13px;
+    padding:8px 0;
+  }
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:10px 16px;
+    border-radius:6px;
+    border:none;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14px;
+    font-weight:500;
+    cursor:pointer;
+    transition:opacity .15s ease;
+  }
+  .btn:hover{opacity:.88;}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .btn-primary{
+    background:var(--forest);
+    color:#fff;
+    width:100%;
+    margin-top:18px;
+    padding:11px;
+  }
+  #status-msg{
+    margin-top:12px;
+    font-size:13px;
+    min-height:18px;
+  }
+  #status-msg.ok{color:var(--forest-dark);}
+  #status-msg.err{color:var(--rust);}
+  .lista-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:16px;
+  }
+  .lista-header button{
+    background:none;
+    border:none;
+    color:var(--ink-soft);
+    font-size:13px;
+    cursor:pointer;
+    text-decoration:underline;
+  }
+  .item{
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    background:#fff;
+  }
+  .item-info{min-width:0;}
+  .item-cliente{
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .item-post{
+    font-weight:500;
+    font-size:14.5px;
+    margin:1px 0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .item-comentario{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:3px;
+    font-style:italic;
+  }
+  .badge{
+    font-size:11.5px;
+    font-weight:500;
+    padding:4px 10px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+  .badge-pendente{background:#F1E9D2; color:var(--amber);}
+  .badge-aprovado{background:#DDE6E1; color:var(--forest-dark);}
+  .badge-ajuste{background:#F0DBD4; color:var(--rust);}
+  .item-actions{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-shrink:0;
+  }
+  .icon-btn{
+    background:none;
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:6px 10px;
+    font-size:12px;
+    cursor:pointer;
+    color:var(--ink);
+  }
+  .icon-btn:hover{background:var(--paper);}
+  .empty{
+    color:var(--ink-soft);
+    font-size:14px;
+    padding:20px 0;
+    text-align:center;
+  }
+  .link-box{
+    display:flex;
+    gap:6px;
+  }
+  .link-box input{font-size:12px; color:var(--ink-soft);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Painel de Aprovação</h1>
+  <p>Suba o criativo, envie o link pro cliente, acompanhe a resposta aqui.</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Novo criativo</h2>
+    <form id="form-upload">
+      <label for="cliente_nome">Cliente</label>
+      <input type="text" id="cliente_nome" required placeholder="Nome do cliente">
+
+      <label for="post_nome">Nome do post</label>
+      <input type="text" id="post_nome" required placeholder="Ex: Carrossel — Dia das Mães">
+
+      <label for="data_prevista">Data prevista de publicação</label>
+      <input type="date" id="data_prevista">
+
+      <label for="legenda">Legenda (opcional)</label>
+      <textarea id="legenda" placeholder="Cole a copy aqui se quiser mostrar pro cliente junto"></textarea>
+
+      <label for="arquivo">Arquivo (imagem ou vídeo)</label>
+      <input type="file" id="arquivo" accept="image/*,video/*" required>
+
+      <button type="submit" class="btn btn-primary" id="btn-enviar">Gerar link de aprovação</button>
+      <div id="status-msg"></div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="lista-header">
+      <h2 style="margin:0;">Criativos enviados</h2>
+      <button onclick="carregarLista()">Atualizar</button>
+    </div>
+    <div id="lista"></div>
+  </section>
+</main>
+
+<script src="config.js"></script>
+<script>
+const form = document.getElementById('form-upload');
+const btnEnviar = document.getElementById('btn-enviar');
+const statusMsg = document.getElementById('status-msg');
+
+function baseUrl(){
+  return window.location.href.replace(/index\.html?$/, '');
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  btnEnviar.disabled = true;
+  statusMsg.className = '';
+  statusMsg.textContent = 'Enviando...';
+
+  try {
+    const file = document.getElementById('arquivo').files[0];
+    if (!file) throw new Error('Selecione um arquivo.');
+
+    const ext = file.name.split('.').pop();
+    const path = `${crypto.randomUUID()}.${ext}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from(BUCKET)
+      .upload(path, file);
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabaseClient.storage.from(BUCKET).getPublicUrl(path);
+
+    const registro = {
+      cliente_nome: document.getElementById('cliente_nome').value,
+      post_nome: document.getElementById('post_nome').value,
+      data_prevista: document.getElementById('data_prevista').value || null,
+      legenda: document.getElementById('legenda').value || null,
+      arquivo_url: urlData.publicUrl,
+      arquivo_tipo: file.type.startsWith('video') ? 'video' : 'image'
+    };
+
+    const { data: inserted, error: insertError } = await supabaseClient
+      .from('creativos')
+      .insert(registro)
+      .select()
+      .single();
+    if (insertError) throw insertError;
+
+    const link = `${baseUrl()}aprovacao.html?id=${inserted.id}`;
+    statusMsg.className = 'ok';
+    statusMsg.innerHTML = `Link gerado: <a href="${link}" target="_blank">${link}</a>`;
+    navigator.clipboard?.writeText(link).catch(()=>{});
+    form.reset();
+    carregarLista();
+  } catch (err) {
+    statusMsg.className = 'err';
+    statusMsg.textContent = 'Erro: ' + err.message;
+  } finally {
+    btnEnviar.disabled = false;
+  }
+});
+
+async function carregarLista(){
+  const lista = document.getElementById('lista');
+  lista.innerHTML = '<div class="empty">Carregando...</div>';
+
+  const { data, error } = await supabaseClient
+    .from('creativos')
+    .select('*')
+    .order('criado_em', { ascending: false });
+
+  if (error) {
+    lista.innerHTML = `<div class="empty">Erro ao carregar: ${error.message}</div>`;
+    return;
+  }
+  if (!data.length) {
+    lista.innerHTML = '<div class="empty">Nenhum criativo enviado ainda.</div>';
+    return;
+  }
+
+  const badge = {
+    pendente: '<span class="badge badge-pendente">Pendente</span>',
+    aprovado: '<span class="badge badge-aprovado">Aprovado</span>',
+    ajuste: '<span class="badge badge-ajuste">Ajuste pedido</span>'
+  };
+
+  lista.innerHTML = data.map(item => {
+    const link = `${baseUrl()}aprovacao.html?id=${item.id}`;
+    return `
+      <div class="item">
+        <div class="item-info">
+          <div class="item-cliente">${item.cliente_nome}</div>
+          <div class="item-post">${item.post_nome}</div>
+          ${item.comentario_cliente ? `<div class="item-comentario">"${item.comentario_cliente}"</div>` : ''}
+        </div>
+        <div class="item-actions">
+          ${badge[item.status] || item.status}
+          <button class="icon-btn" onclick="navigator.clipboard.writeText('${link}')">Copiar link</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+carregarLista();
+</script>
+</body>
+</html>
